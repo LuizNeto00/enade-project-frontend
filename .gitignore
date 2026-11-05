@@ -4,6 +4,30 @@ node_modules
 
 # .env files
 .env*
+!.env.example
+!.env.sample
+
+# Local credentials and private keys
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+# Runtime logs and temporary files
+*.log
+*.tmp
+*.temp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Tool and OS caches
+.cache/
+.eslintcache
+.vite/
+.DS_Store
+Thumbs.db
 
 # Quasar core related directories
 .quasar
@@ -19,8 +43,3 @@ node_modules
 # Capacitor related directories and files
 /src-capacitor/www
 /src-capacitor/node_modules
-
-# Log files
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*

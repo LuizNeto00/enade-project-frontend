@@ -14,12 +14,15 @@ import type {
   ParamValueZeroOrMore,
   ParamValueZeroOrOne,
 } from 'vue-router'
-import type { _ExtractParamParserType } from 'vue-router/experimental';
+import type {
+  _ExtractParamParserType,
+} from 'vue-router/experimental'
 
 declare module 'vue-router' {
   interface TypesConfig {
-    ParamParsers: never;
-    RouteNamedMap: import('vue-router/auto-routes').RouteNamedMap;
+    _ParamParsers: {}
+    RouteNamedMap: import('vue-router/auto-routes').RouteNamedMap
+    _RouteFileInfoMap: import('vue-router/auto-routes')._RouteFileInfoMap
   }
 }
 
@@ -33,29 +36,128 @@ declare module 'vue-router/auto-routes' {
       '/',
       Record<never, never>,
       Record<never, never>,
-      '//(index)' | '//second'
-    >;
+      | '//(index)'
+      | '//second'
+    >,
     '//(index)': RouteRecordInfo<
       '//(index)',
       '/',
       Record<never, never>,
       Record<never, never>,
-      never
-    >;
+      | never
+    >,
     '//second': RouteRecordInfo<
       '//second',
       '/second',
       Record<never, never>,
       Record<never, never>,
-      never
-    >;
+      | never
+    >,
     '/[...path]': RouteRecordInfo<
       '/[...path]',
       '/:path(.*)',
       { path: ParamValue<true> },
       { path: ParamValue<false> },
-      never
-    >;
+      | never
+    >,
+    'register': RouteRecordInfo<
+      'register',
+      '/register',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'student-account': RouteRecordInfo<
+      'student-account',
+      '/student/account',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'student-answer-keys': RouteRecordInfo<
+      'student-answer-keys',
+      '/student/answer-keys',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'student-forum': RouteRecordInfo<
+      'student-forum',
+      '/student/forum',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'student-panel': RouteRecordInfo<
+      'student-panel',
+      '/student/panel',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'student-performance': RouteRecordInfo<
+      'student-performance',
+      '/student/performance',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'student-questions': RouteRecordInfo<
+      'student-questions',
+      '/student/questions',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'student-simulations': RouteRecordInfo<
+      'student-simulations',
+      '/student/simulations',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'teacher-account': RouteRecordInfo<
+      'teacher-account',
+      '/teacher/account',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'teacher-panel': RouteRecordInfo<
+      'teacher-panel',
+      '/teacher/panel',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'teacher-questions': RouteRecordInfo<
+      'teacher-questions',
+      '/teacher/questions',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'teacher-add-question': RouteRecordInfo<
+      'teacher-add-question',
+      '/teacher/questions/create',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'teacher-review': RouteRecordInfo<
+      'teacher-review',
+      '/teacher/review',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'teacher-users': RouteRecordInfo<
+      'teacher-users',
+      '/teacher/users',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
   }
 
   /**
@@ -70,21 +172,151 @@ declare module 'vue-router/auto-routes' {
    */
   export interface _RouteFileInfoMap {
     'src/pages/index.vue': {
-      routes: '/' | '//(index)' | '//second';
-      views: 'default';
-    };
+      routes:
+        | '/'
+        | '//(index)'
+        | '//second'
+      views:
+        | 'default'
+      pathParamNames:
+        | never
+    }
     'src/pages/index/(index).vue': {
-      routes: '//(index)';
-      views: never;
-    };
+      routes:
+        | '//(index)'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
     'src/pages/index/second.vue': {
-      routes: '//second';
-      views: never;
-    };
+      routes:
+        | '//second'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
     'src/pages/[...path].vue': {
-      routes: '/[...path]';
-      views: never;
-    };
+      routes:
+        | '/[...path]'
+      views:
+        | never
+      pathParamNames:
+        | 'path'
+    }
+    'src/pages/Register.vue': {
+      routes:
+        | 'register'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/student/StudentAccount.vue': {
+      routes:
+        | 'student-account'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/student/AnswerKeys.vue': {
+      routes:
+        | 'student-answer-keys'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/student/StudentForum.vue': {
+      routes:
+        | 'student-forum'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/student/StudentPanel.vue': {
+      routes:
+        | 'student-panel'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/student/StudentPerformance.vue': {
+      routes:
+        | 'student-performance'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/student/QuestionBank.vue': {
+      routes:
+        | 'student-questions'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/student/Simulations.vue': {
+      routes:
+        | 'student-simulations'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/teacher/TeacherAccount.vue': {
+      routes:
+        | 'teacher-account'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/teacher/TeacherPanel.vue': {
+      routes:
+        | 'teacher-panel'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/teacher/ManageQuestions.vue': {
+      routes:
+        | 'teacher-questions'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/teacher/AddQuestion.vue': {
+      routes:
+        | 'teacher-add-question'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/teacher/ReviewApproval.vue': {
+      routes:
+        | 'teacher-review'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/teacher/UsersPermissions.vue': {
+      routes:
+        | 'teacher-users'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
   }
 
   /**
@@ -94,7 +326,9 @@ declare module 'vue-router/auto-routes' {
    * @internal
    */
   export type _RouteNamesForFilePath<FilePath extends string> =
-    _RouteFileInfoMap extends Record<FilePath, infer Info> ? Info['routes'] : keyof RouteNamedMap;
+    _RouteFileInfoMap extends Record<FilePath, infer Info>
+      ? Info['routes']
+      : keyof RouteNamedMap
 }
 
-export {};
+export {}
