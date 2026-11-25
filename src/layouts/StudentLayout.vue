@@ -38,7 +38,7 @@ watch(isMobile, (mobile) => {
         <q-space />
         <div class="student-environment">
           <span class="student-environment-name">{{ firstName }}</span>
-          <span class="student-environment-label">Estudante · Ambiente de teste</span>
+          <span class="student-environment-label">Estudante</span>
         </div>
       </q-toolbar>
     </q-header>

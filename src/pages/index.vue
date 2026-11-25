@@ -4,21 +4,15 @@ import { useRouter } from 'vue-router';
 import { Notify } from 'quasar';
 import HeaderLogin from '@/components/headers/HeaderLogin.vue';
 import { useAuthStore } from '@/stores/auth-store';
-
-const LOGIN_LOADING_DELAY_MS = 250;
-// Generic on purpose: it must not reveal whether the e-mail exists, the password is wrong or the profile does not match.
-const LOGIN_FAILED_MESSAGE = 'Não foi possível entrar. Verifique os dados informados e tente novamente.';
+import type { LoginData } from '@/types/auth';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 const profiles: { label: string; value: IProfileType }[] = [
   { label: 'Estudante', value: 'student' },
   { label: 'Professor', value: 'teacher' },
 ];
 
-const userData = reactive<{
-  email: string;
-  password: string;
-  profileType: IProfileType;
-}>({
+const userData = reactive<LoginData>({
   email: '',
   password: '',
   profileType: 'student',
@@ -41,16 +35,10 @@ async function handleLogin() {
 
   isLoggingIn.value = true;
   try {
-    // Simulated delay for visible local-development loading; remove when the API is connected.
-    await new Promise((resolve) => setTimeout(resolve, LOGIN_LOADING_DELAY_MS));
-    const result = authStore.login(
-      userData.email,
-      userData.password,
-      userData.profileType,
-    );
+    const result = await authStore.login(userData);
 
     if (!result.success) {
-      Notify.create({ type: 'negative', message: LOGIN_FAILED_MESSAGE });
+      Notify.create({ type: 'negative', message: result.message });
       return;
     }
 
@@ -59,13 +47,13 @@ async function handleLogin() {
       message: 'Login realizado com sucesso!',
     });
     await router.push({
-      name: result.user.profileType === 'student' ? 'student-panel' : 'teacher-panel',
+      name: result.user.profileType === 'student' ? 'student-performance' : 'teacher-panel',
     });
   } catch (error) {
     console.error('Não foi possível concluir o login.', error);
     Notify.create({
       type: 'negative',
-      message: 'Não foi possível concluir o login. Tente novamente.',
+      message: getApiErrorMessage(error, 'Não foi possível concluir o login. Tente novamente.'),
     });
   } finally {
     isLoggingIn.value = false;
@@ -75,7 +63,7 @@ async function handleLogin() {
 
 <template>
   <div class="login-page column no-wrap">
-    <HeaderLogin/>
+    <HeaderLogin />
 
     <main class="login-page-content">
       <p class="login-page-eyebrow text-primary text-uppercase text-weight-bold">

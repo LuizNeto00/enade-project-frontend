@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TeacherPlaceholder from '@/components/teacher/TeacherPlaceholder.vue';
+import AccountPage from '@/components/account/AccountPage.vue';
 
 definePage({
   name: 'teacher-account',
@@ -8,8 +8,5 @@ definePage({
 </script>
 
 <template>
-  <TeacherPlaceholde
-    title="Minha conta"
-    description="Visualize e gerencie as informações da sua conta de professor."
-  />
+  <AccountPage />
 </template>

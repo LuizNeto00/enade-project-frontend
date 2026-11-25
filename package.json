@@ -2,8 +2,8 @@
   "name": "enade-project-frontend",
   "version": "0.0.1",
   "description": "A Quasar Project",
-  "productName": "Quasar App",
-  "author": "Luiz Carlos <luizcarlosdev000@gmail.com>",
+  "productName": "Prepara ENADE",
+  "author": "Prepara ENADE",
   "type": "module",
   "private": true,
   "scripts": {
@@ -15,28 +15,31 @@
     "postinstall": "quasar prepare --silent"
   },
   "dependencies": {
-    "pinia": "^4.0.2",
     "@quasar/extras": "^2.1.0",
+    "axios": "^1.21.1",
+    "pinia": "^4.0.2",
+    "pdfjs-dist": "^4.10.38",
     "quasar": "^2.35.2",
     "vue": "^3.5.22",
     "vue-router": "^5.0.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@quasar/app-vite": "^3.10.3",
+    "@types/bun": "^1.4.5",
+    "@types/node": "^22.19.11",
+    "@vue/eslint-config-prettier": "^10.2.0",
+    "@vue/eslint-config-typescript": "^14.7.0",
+    "autoprefixer": "^10.4.27",
     "eslint": "^10.8.0",
     "eslint-plugin-vue": "^10.8.0",
     "globals": "^17.4.0",
-    "@vue/eslint-config-typescript": "^14.7.0",
+    "postcss": "^8.5.8",
+    "prettier": "^3.8.1",
+    "typescript": "^6.0.0",
     "vite-plugin-checker": "^0.14.5",
     "vue-eslint-parser": "^10.4.0",
-    "@vue/eslint-config-prettier": "^10.2.0",
-    "prettier": "^3.8.1",
-    "vue-tsc": "^3.3.3",
-    "@types/node": "^22.19.11",
-    "@quasar/app-vite": "^3.10.3",
-    "autoprefixer": "^10.4.27",
-    "postcss": "^8.5.8",
-    "typescript": "^6.0.0"
+    "vue-tsc": "^3.3.3"
   },
   "keywords": [
     "quasar",

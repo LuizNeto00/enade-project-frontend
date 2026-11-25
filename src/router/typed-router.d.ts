@@ -116,9 +116,23 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'student-simulation': RouteRecordInfo<
+      'student-simulation',
+      '/student/simulations/:id',
+      { id: ParamValue<true> },
+      { id: ParamValue<false> },
+      | never
+    >,
     'teacher-account': RouteRecordInfo<
       'teacher-account',
       '/teacher/account',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'teacher-mock-exams': RouteRecordInfo<
+      'teacher-mock-exams',
+      '/teacher/mock-exams',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -269,9 +283,25 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | never
     }
+    'src/pages/student/StudentSimulation.vue': {
+      routes:
+        | 'student-simulation'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
     'src/pages/teacher/TeacherAccount.vue': {
       routes:
         | 'teacher-account'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/teacher/ManageMockExams.vue': {
+      routes:
+        | 'teacher-mock-exams'
       views:
         | never
       pathParamNames:

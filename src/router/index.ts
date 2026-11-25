@@ -36,7 +36,7 @@ function withDashboardLayouts(autoRoutes: RouteRecordRaw[]): RouteRecordRaw[] {
         return {
           path: route.path,
           component: StudentLayout,
-          redirect: '/student/panel',
+          redirect: '/student/performance',
           children: route.children ?? [],
         };
       }

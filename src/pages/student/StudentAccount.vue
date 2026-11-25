@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import StudentPlaceholder from '@/components/student/StudentPlaceholder.vue';
+import AccountPage from '@/components/account/AccountPage.vue';
 
 definePage({
   name: 'student-account',
@@ -8,9 +8,5 @@ definePage({
 </script>
 
 <template>
-  <StudentPlaceholder
-    title="Minha conta"
-    description="Consulte seus dados de estudante."
-    icon="account_circle"
-  />
+  <AccountPage />
 </template>

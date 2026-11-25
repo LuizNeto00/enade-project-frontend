@@ -8,7 +8,7 @@ definePage({
 </script>
 
 <template>
-  <TeacherPlaceholde
+  <TeacherPlaceholder
     title="Revisão e aprovação"
     description="Revise as questões enviadas antes de disponibilizá-las aos estudantes."
   />

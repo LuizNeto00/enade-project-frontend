@@ -1,212 +1,130 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
-import { Dialog, Notify } from 'quasar';
-import { courseOptions } from '@/constants/course-options';
-import { EXAM_YEAR_OPTIONS, isExamYearOption } from '@/constants/exam-years';
-import { useAuthStore } from '@/stores/auth-store';
-import {
-  useQuestionsStore,
-  type Question,
-  type QuestionDifficulty,
-  type QuestionOption,
-} from '@/stores/questions-store';
+import { computed, onMounted, ref } from 'vue';
+import { Notify } from 'quasar';
+import CardEditQuestion from '@/components/card/teacher/CardEditQuestion.vue';
+import FilterQuestionsDialog from '@/components/card/teacher/FilterQuestionsDialog.vue';
+import QuestionStatisticsDialog from '@/components/card/teacher/QuestionStatisticsDialog.vue';
+import { useQuestionsStore } from '@/stores/questions-store';
+import type { Question, QuestionFilterForm } from '@/types/question';
+import { getApiErrorMessage } from '@/utils/api-error';
+import QuestionComments from '@/components/comment/QuestionComments.vue';
 
 definePage({
   name: 'teacher-questions',
   path: '/teacher/questions',
 });
 
-const OPTION_LABELS = ['A', 'B', 'C', 'D', 'E'] as const;
-const QUESTION_LEVELS: QuestionDifficulty[] = ['Fácil', 'Médio', 'Difícil'];
-
-interface QuestionEditForm {
-  statement: string;
-  course: string;
-  examYear: number | null;
-  level: QuestionDifficulty;
-  optionCount: 4 | 5;
-  correctOption: string;
-  options: QuestionOption[];
-}
-
-function buildOptionFields(
-  count: number,
-  previousOptions: QuestionOption[] = [],
-): QuestionOption[] {
-  return OPTION_LABELS.slice(0, count).map((label) => {
-    const existingOption = previousOptions.find((option) => option.label === label);
-
-    return {
-      label,
-      text: existingOption?.text ?? '',
-    };
-  });
-}
-
-function createQuestionEditForm(question: Question): QuestionEditForm {
-  const optionCount = Math.min(5, Math.max(4, question.options.length)) as 4 | 5;
-
-  return {
-    statement: question.statement,
-    course: question.course,
-    examYear: question.examYear,
-    level: question.level,
-    optionCount,
-    correctOption: question.correctOption,
-    options: buildOptionFields(optionCount, question.options),
-  };
-}
-
 const questionsStore = useQuestionsStore();
-const authStore = useAuthStore();
 const questions = computed(() => questionsStore.getQuestions());
+const isLoading = computed(() => questionsStore.isLoading);
+const appliedFilters = computed(() => questionsStore.getAppliedFilters());
 const editDialogOpen = ref(false);
-const isSaving = ref(false);
-const editingQuestionId = ref<string | null>(null);
-const editForm = reactive<QuestionEditForm>(
-  createQuestionEditForm({
-    id: 'placeholder',
-    teacherId: authStore.currentUser?.id ?? 'teacher',
-    statement: '',
-    course: '',
-    examYear: null,
-    level: 'Fácil',
-    options: buildOptionFields(4),
-    correctOption: 'A',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }),
-);
+const filterDialogOpen = ref(false);
+const editingQuestion = ref<Question | null>(null);
+const questionToDelete = ref<Question | null>(null);
+const deleteDialogOpen = ref(false);
+const isDeleting = ref(false);
+const statisticsDialogOpen = ref(false);
+const statisticsQuestion = ref<Question | null>(null);
 
-watch(
-  () => editForm.optionCount,
-  (optionCount) => {
-    const optionLabels = OPTION_LABELS.slice(0, optionCount);
-    editForm.options = buildOptionFields(optionCount, editForm.options);
+const activeFilterChips = computed(() => {
+  const filters = appliedFilters.value;
+  const chips: string[] = [];
+  if (filters.search) chips.push(`Busca: ${filters.search}`);
+  if (filters.examYear) chips.push(`Ano: ${filters.examYear}`);
+  if (filters.course) chips.push(`Curso: ${filters.course}`);
+  if (filters.createdFrom) chips.push(`A partir de: ${formatDateOnly(filters.createdFrom)}`);
+  if (filters.createdTo) chips.push(`Até: ${formatDateOnly(filters.createdTo)}`);
+  if (filters.status === 'active') chips.push('Status: Ativas');
+  if (filters.status === 'inactive') chips.push('Status: Inativas');
+  return chips;
+});
 
-    if (!optionLabels.includes(editForm.correctOption as (typeof OPTION_LABELS)[number])) {
-      editForm.correctOption = optionLabels[0] ?? 'A';
-    }
-  },
-);
-
-function validateQuestionForm(form: QuestionEditForm): string | null {
-  if (!form.statement.trim()) {
-    return 'Informe o enunciado da questão.';
-  }
-
-  if (!form.course.trim()) {
-    return 'Selecione o curso da questão.';
-  }
-
-  if (!isExamYearOption(form.examYear)) {
-    return 'Selecione um ano válido do ENADE.';
-  }
-
-  if (!form.level) {
-    return 'Selecione o nível de dificuldade.';
-  }
-
-  if (!form.options.some((option) => option.label === form.correctOption)) {
-    return 'Selecione uma alternativa correta válida.';
-  }
-
-  const emptyOption = form.options.find((option) => !option.text.trim());
-
-  if (emptyOption) {
-    return `Preencha o conteúdo da alternativa ${emptyOption.label}.`;
-  }
-
-  return null;
-}
+onMounted(() => {
+  void refreshQuestions();
+});
 
 function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('pt-BR', {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Data indisponível';
+  const datePart = new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  });
+    timeZone: 'America/Sao_Paulo',
+  }).format(date);
+  const timePart = new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'America/Sao_Paulo',
+  }).format(date);
+  return `${datePart} às ${timePart}`;
+}
+
+function formatDateOnly(value: string): string {
+  const [year, month, day] = value.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+async function refreshQuestions(filters?: QuestionFilterForm) {
+  try {
+    await questionsStore.fetchQuestions(filters);
+  } catch {
+    Notify.create({
+      type: 'negative',
+      message: 'Não foi possível carregar as questões. Tente novamente.',
+    });
+  }
 }
 
 function openEditDialog(question: Question) {
-  editingQuestionId.value = question.id;
-  Object.assign(editForm, createQuestionEditForm(question));
+  editingQuestion.value = question;
   editDialogOpen.value = true;
 }
 
 function closeEditDialog() {
   editDialogOpen.value = false;
-  editingQuestionId.value = null;
+  editingQuestion.value = null;
 }
 
-function saveQuestionChanges() {
-  if (isSaving.value || !editingQuestionId.value) {
-    return;
-  }
+function openStatisticsDialog(question: Question) {
+  statisticsQuestion.value = question;
+  statisticsDialogOpen.value = true;
+}
 
-  const validationMessage = validateQuestionForm(editForm);
+async function handleQuestionSaved() {
+  closeEditDialog();
+  await refreshQuestions();
+}
 
-  if (validationMessage) {
-    Notify.create({ type: 'negative', message: validationMessage });
-    return;
-  }
+function applyFilters(filters: QuestionFilterForm) {
+  void refreshQuestions(filters);
+}
 
-  if (!isExamYearOption(editForm.examYear)) {
-    return;
-  }
-
-  isSaving.value = true;
-
-  try {
-    const updated = questionsStore.updateQuestion(editingQuestionId.value, {
-      statement: editForm.statement,
-      course: editForm.course,
-      examYear: editForm.examYear,
-      level: editForm.level,
-      options: editForm.options,
-      correctOption: editForm.correctOption,
-    });
-
-    if (!updated) {
-      Notify.create({
-        type: 'negative',
-        message: 'Não foi possível atualizar a questão. Verifique os dados e tente novamente.',
-      });
-      return;
-    }
-
-    Notify.create({ type: 'positive', message: 'Questão atualizada com sucesso!' });
-    closeEditDialog();
-  } catch (error) {
-    console.error('Não foi possível atualizar a questão.', error);
-    Notify.create({
-      type: 'negative',
-      message: 'Não foi possível atualizar a questão. Tente novamente.',
-    });
-  } finally {
-    isSaving.value = false;
-  }
+function clearFilters() {
+  void refreshQuestions({
+    search: '',
+    examYear: null,
+    course: null,
+    createdFrom: '',
+    createdTo: '',
+    status: 'all',
+  });
 }
 
 function removeQuestion(questionId: string) {
-  const targetQuestion = questionsStore.getQuestionById(questionId);
+  const question = questionsStore.getQuestionById(questionId);
+  if (!question || isDeleting.value) return;
+  questionToDelete.value = question;
+  deleteDialogOpen.value = true;
+}
 
-  if (!targetQuestion) {
-    return;
-  }
-
-  Dialog.create({
-    title: 'Excluir questão',
-    message: 'Deseja realmente remover esta questão do seu banco?',
-    cancel: true,
-    persistent: true,
-    ok: {
-      label: 'Excluir',
-      color: 'negative',
-    },
-  }).onOk(() => {
-    const deleted = questionsStore.deleteQuestion(questionId);
-
+async function confirmQuestionDeletion() {
+  if (!questionToDelete.value || isDeleting.value) return;
+  isDeleting.value = true;
+  try {
+    const deleted = await questionsStore.deleteQuestion(questionToDelete.value.id);
     if (!deleted) {
       Notify.create({
         type: 'negative',
@@ -215,8 +133,17 @@ function removeQuestion(questionId: string) {
       return;
     }
 
+    deleteDialogOpen.value = false;
+    questionToDelete.value = null;
     Notify.create({ type: 'positive', message: 'Questão removida com sucesso!' });
-  });
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: getApiErrorMessage(error, 'Não foi possível excluir a questão. Tente novamente.'),
+    });
+  } finally {
+    isDeleting.value = false;
+  }
 }
 </script>
 
@@ -228,22 +155,61 @@ function removeQuestion(questionId: string) {
           <p class="question-management-page__eyebrow">Professor</p>
           <h1>Gerenciar questões</h1>
         </div>
-        <q-btn
-          color="primary"
-          label="Cadastrar nova questão"
-          icon="add"
-          unelevated
-          no-caps
-          to="/teacher/questions/create"
-        />
+        <div class="question-management-page__header-actions">
+          <q-btn
+            color="primary"
+            :outline="activeFilterChips.length === 0"
+            :label="
+              activeFilterChips.length
+                ? `Filtros (${activeFilterChips.length})`
+                : 'Filtrar questões'
+            "
+            icon="filter_alt"
+            no-caps
+            @click="filterDialogOpen = true"
+          />
+          <q-btn
+            color="primary"
+            label="Cadastrar nova questão"
+            icon="add"
+            unelevated
+            no-caps
+            to="/teacher/questions/create"
+          />
+        </div>
       </div>
 
-      <div v-if="questions.length === 0" class="question-empty-state">
+      <div v-if="activeFilterChips.length" class="question-filter-chips">
+        <q-chip
+          v-for="chip in activeFilterChips"
+          :key="chip"
+          dense
+          color="blue-1"
+          text-color="primary"
+        >
+          {{ chip }}
+        </q-chip>
+      </div>
+
+      <div v-if="isLoading" class="question-list">
+        <q-card v-for="item in 3" :key="item" flat bordered class="question-card">
+          <q-card-section>
+            <q-skeleton type="text" width="70%" />
+            <q-skeleton type="text" width="45%" />
+          </q-card-section>
+        </q-card>
+      </div>
+
+      <div v-else-if="questions.length === 0" class="question-empty-state">
         <q-banner rounded class="question-empty-banner">
           <template #avatar>
-            <q-icon name="info" color="primary" />
+            <q-icon :name="activeFilterChips.length ? 'search_off' : 'info'" color="primary" />
           </template>
-          Você ainda não cadastrou nenhuma questão.
+          {{
+            activeFilterChips.length
+              ? 'Nenhuma questão encontrada para os filtros aplicados.'
+              : 'Você ainda não cadastrou nenhuma questão.'
+          }}
         </q-banner>
       </div>
 
@@ -257,30 +223,42 @@ function removeQuestion(questionId: string) {
         >
           <q-card-section>
             <div class="question-card__title-row">
-              <h2>{{ question.statement }}</h2>
-              <q-badge
-                :color="
-                  question.level === 'Fácil'
-                    ? 'positive'
-                    : question.level === 'Médio'
-                      ? 'warning'
-                      : 'negative'
-                "
-              >
-                {{ question.level }}
-              </q-badge>
+              <div class="question-card__statement" v-html="question.statement" />
+              <div class="question-card__badges">
+                <q-badge
+                  :color="
+                    question.level === 'Fácil'
+                      ? 'positive'
+                      : question.level === 'Médio'
+                        ? 'warning'
+                        : 'negative'
+                  "
+                >
+                  {{ question.level }}
+                </q-badge>
+                <q-badge :color="question.status === 'active' ? 'positive' : 'grey-6'">
+                  {{ question.status === 'active' ? 'Ativa' : 'Inativa' }}
+                </q-badge>
+              </div>
             </div>
 
             <div class="question-card__meta">
               <span><strong>Curso:</strong> {{ question.course }}</span>
-              <span><strong>Ano da Questão:</strong> {{ question.examYear ?? 'Não informado' }}</span>
-              <span><strong>Alternativas:</strong> {{ question.options.length }}</span>
-              <span><strong>Correta:</strong> {{ question.correctOption }}</span>
-              <span><strong>Criado em:</strong> {{ formatDate(question.createdAt) }}</span>
+              <span><strong>Ano:</strong> {{ question.examYear ?? 'Não informado' }}</span>
+              <span><strong>Alternativas:</strong> {{ question.optionCount }}</span>
+              <span><strong>Criada em:</strong> {{ formatDate(question.createdAt) }}</span>
             </div>
           </q-card-section>
 
           <q-card-actions align="right" class="question-card__actions">
+            <q-btn
+              flat
+              color="primary"
+              label="Ver dados"
+              icon="bar_chart"
+              no-caps
+              @click="openStatisticsDialog(question)"
+            />
             <q-btn flat color="primary" label="Editar" no-caps @click="openEditDialog(question)" />
             <q-btn
               flat
@@ -290,96 +268,59 @@ function removeQuestion(questionId: string) {
               @click="removeQuestion(question.id)"
             />
           </q-card-actions>
+          <q-card-section class="question-card__comments">
+            <QuestionComments :question-id="question.id" />
+          </q-card-section>
         </q-card>
       </div>
     </div>
 
-    <q-dialog v-model="editDialogOpen" persistent>
-      <q-card class="question-dialog-card">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Editar questão</div>
-          <q-space />
-          <q-btn icon="close" flat round dense @click="closeEditDialog" />
-        </q-card-section>
+    <QuestionStatisticsDialog v-model="statisticsDialogOpen" :question="statisticsQuestion" />
 
+    <q-dialog v-model="deleteDialogOpen" persistent>
+      <q-card class="delete-question-dialog">
         <q-card-section>
-          <div class="question-form__grid">
-            <div class="question-form__field question-form__field--full">
-              <label class="question-form__label">Enunciado</label>
-              <q-input v-model="editForm.statement" type="textarea" outlined autogrow rows="4" />
-            </div>
-
-            <div class="question-form__field">
-              <label class="question-form__label">Curso</label>
-              <q-select v-model="editForm.course" :options="courseOptions" outlined use-input />
-            </div>
-
-            <div class="question-form__field">
-              <label class="question-form__label">Nível</label>
-              <q-select v-model="editForm.level" :options="QUESTION_LEVELS" outlined />
-            </div>
-
-            <div class="question-form__field">
-              <label class="question-form__label">Ano do ENADE</label>
-              <q-select
-                v-model="editForm.examYear"
-                :options="EXAM_YEAR_OPTIONS"
-                outlined
-                placeholder="Selecione o ano"
-              />
-            </div>
-
-            <div class="question-form__field">
-              <label class="question-form__label">Quantidade</label>
-              <q-select
-                v-model="editForm.optionCount"
-                :options="[4, 5]"
-                outlined
-                emit-value
-                map-options
-              />
-            </div>
-
-            <div class="question-form__field question-form__field--full">
-              <label class="question-form__label">Alternativas</label>
-              <div class="question-options">
-                <div
-                  v-for="option in editForm.options"
-                  :key="option.label"
-                  class="question-option-row"
-                >
-                  <span class="question-option-letter">{{ option.label }}</span>
-                  <q-input v-model="option.text" outlined dense />
-                </div>
-              </div>
-            </div>
-
-            <div class="question-form__field question-form__field--full">
-              <label class="question-form__label">Alternativa correta</label>
-              <q-select
-                v-model="editForm.correctOption"
-                :options="editForm.options.map((option) => option.label)"
-                outlined
-                emit-value
-                map-options
-              />
-            </div>
-          </div>
+          <div class="text-h6">Excluir questão</div>
+          <p class="delete-question-dialog__message">
+            Tem certeza de que deseja excluir esta questão? As imagens associadas também serão
+            removidas. Questões que já possuem respostas não podem ser excluídas.
+          </p>
         </q-card-section>
-
         <q-card-actions align="right">
-          <q-btn flat color="primary" no-caps label="Cancelar" @click="closeEditDialog" />
           <q-btn
+            flat
             color="primary"
+            label="Cancelar"
             no-caps
-            label="Salvar alterações"
-            :loading="isSaving"
-            :disable="isSaving"
-            @click="saveQuestionChanges"
+            :disable="isDeleting"
+            @click="deleteDialogOpen = false"
+          />
+          <q-btn
+            color="negative"
+            label="Excluir questão"
+            no-caps
+            :loading="isDeleting"
+            :disable="isDeleting"
+            @click="confirmQuestionDeletion"
           />
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="editDialogOpen" persistent>
+      <CardEditQuestion
+        v-if="editingQuestion"
+        :question="editingQuestion"
+        @cancel="closeEditDialog"
+        @saved="handleQuestionSaved"
+      />
+    </q-dialog>
+    <FilterQuestionsDialog
+      v-model="filterDialogOpen"
+      :filters="appliedFilters"
+      @apply="applyFilters"
+      @clear="clearFilters"
+    />
   </q-page>
 </template>
 
@@ -401,6 +342,18 @@ function removeQuestion(questionId: string) {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 24px;
+}
+
+.question-management-page__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.question-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  margin: -8px 0 16px;
 }
 
 .question-management-page__eyebrow {
@@ -444,6 +397,30 @@ function removeQuestion(questionId: string) {
   margin-bottom: 12px;
 }
 
+.question-card__statement {
+  min-width: 0;
+  color: #1a2340;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.question-card__statement :deep(p) {
+  margin: 0;
+}
+
+.question-card__statement :deep(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.question-card__badges {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .question-card__title-row h2 {
   margin: 0;
   color: #1a2340;
@@ -463,55 +440,15 @@ function removeQuestion(questionId: string) {
   padding-top: 0;
 }
 
-.question-form__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+.delete-question-dialog {
+  width: min(440px, 92vw);
+  border-radius: 16px;
 }
 
-.question-form__field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.question-form__field--full {
-  grid-column: 1 / -1;
-}
-
-.question-form__label {
-  color: #1a2340;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.question-options {
-  display: grid;
-  gap: 12px;
-}
-
-.question-option-row {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-}
-
-.question-option-letter {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  color: #1d4ed8;
-  background: #eaf0ff;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.question-dialog-card {
-  width: min(760px, 90vw);
-  border-radius: 18px;
+.delete-question-dialog__message {
+  margin: 10px 0 0;
+  color: #475467;
+  line-height: 1.5;
 }
 
 @media (max-width: 760px) {
@@ -520,8 +457,16 @@ function removeQuestion(questionId: string) {
     align-items: flex-start;
   }
 
-  .question-form__grid {
-    grid-template-columns: 1fr;
+  .question-management-page__header-actions {
+    width: 100%;
+  }
+
+  .question-management-page__header-actions :deep(.q-btn) {
+    flex: 1;
+  }
+
+  .question-card__title-row {
+    flex-direction: column;
   }
 }
 </style>

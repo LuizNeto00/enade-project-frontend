@@ -8,7 +8,7 @@ definePage({
 </script>
 
 <template>
-  <TeacherPlaceholde
+  <TeacherPlaceholder
     title="Usuários e permissões"
     description="Consulte os perfis cadastrados e suas permissões de acesso."
   />

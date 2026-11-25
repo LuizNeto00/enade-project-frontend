@@ -30,7 +30,7 @@ watch(isMobile, (mobile) => {
         </div>
         <div class="teacher-brand">Prepara ENADE</div>
         <q-space />
-        <div class="teacher-environment">Professor · Ambiente de teste</div>
+        <div class="teacher-environment">Professor</div>
       </q-toolbar>
     </q-header>
 

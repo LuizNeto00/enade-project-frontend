@@ -1,4 +1,6 @@
 {
   "extends": "./.quasar/tsconfig.json",
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"]
+  "compilerOptions": {
+    "types": ["bun"]
+  }
 }

@@ -1,14 +1,111 @@
 <script setup lang="ts">
-import { courseOptions } from '@/constants/course-options';
-import { EXAM_YEAR_OPTIONS } from '@/constants/exam-years';
+import { Notify } from 'quasar';
+import { nextTick, onMounted, ref } from 'vue';
+import StudentQuestionFilters from '@/components/card/student/StudentQuestionFilters.vue';
+import StudentQuestionList from '@/components/card/student/StudentQuestionList.vue';
+import { useAuthStore } from '@/stores/auth-store';
+import { answerStudentQuestion, getStudentQuestions } from '@/services/student-question.service';
+import type {
+  StudentQuestion,
+  StudentQuestionAnswer,
+  StudentQuestionFilters as StudentQuestionFiltersData,
+  StudentQuestionOptionLabel,
+} from '@/types/student-question';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 definePage({
   name: 'student-questions',
   path: '/student/questions',
 });
 
-const componentOptions = ['Formação Geral', 'Conhecimento Específico'];
-const questionTypeOptions = ['Múltipla escolha', 'Asserção-razão', 'Discursiva'];
+const authStore = useAuthStore();
+const questions = ref<StudentQuestion[]>([]);
+const answers = ref<Record<string, StudentQuestionAnswer>>({});
+const submittingIds = ref(new Set<string>());
+const isLoading = ref(false);
+const hasLoadError = ref(false);
+let latestRequestId = 0;
+
+async function loadQuestions(filters: StudentQuestionFiltersData = {}): Promise<void> {
+  if (!authStore.token || authStore.currentUser?.profileType !== 'student') {
+    hasLoadError.value = true;
+    return;
+  }
+
+  const requestId = ++latestRequestId;
+  isLoading.value = true;
+  hasLoadError.value = false;
+
+  try {
+    const result = await getStudentQuestions(authStore.token, filters);
+    if (requestId === latestRequestId) {
+      questions.value = result;
+    }
+  } catch (error) {
+    if (requestId === latestRequestId) {
+      hasLoadError.value = true;
+      Notify.create({
+        type: 'negative',
+        message: getApiErrorMessage(
+          error,
+          'Não foi possível carregar as questões. Tente novamente.',
+        ),
+      });
+    }
+  } finally {
+    if (requestId === latestRequestId) {
+      isLoading.value = false;
+    }
+  }
+}
+
+function applyFilters(filters: StudentQuestionFiltersData): void {
+  void loadQuestions(filters);
+}
+
+function clearFilters(): void {
+  void loadQuestions({});
+}
+
+async function submitAnswer(
+  questionId: string,
+  selectedOption: StudentQuestionOptionLabel,
+): Promise<void> {
+  if (
+    answers.value[questionId] ||
+    submittingIds.value.has(questionId) ||
+    !authStore.token ||
+    authStore.currentUser?.profileType !== 'student'
+  ) {
+    return;
+  }
+
+  submittingIds.value = new Set([...submittingIds.value, questionId]);
+  try {
+    const result = await answerStudentQuestion(authStore.token, questionId, selectedOption);
+    answers.value = { ...answers.value, [questionId]: result };
+    await nextTick();
+    document
+      .getElementById(`question-answer-comment-${questionId}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: getApiErrorMessage(
+        error,
+        'Não foi possível confirmar sua resposta. Tente novamente.',
+      ),
+    });
+  } finally {
+    const remaining = new Set(submittingIds.value);
+    remaining.delete(questionId);
+    submittingIds.value = remaining;
+  }
+}
+
+onMounted(() => {
+  void loadQuestions();
+});
 </script>
 
 <template>
@@ -19,90 +116,25 @@ const questionTypeOptions = ['Múltipla escolha', 'Asserção-razão', 'Discursi
 
         <q-breadcrumbs class="question-bank-breadcrumbs" separator="·">
           <q-breadcrumbs-el label="Painel do aluno" to="/student/panel" />
-          <q-breadcrumbs-el label="Tecnologia em Análise e Desenvolvimento de Sistemas" />
+          <q-breadcrumbs-el label="Banco de questões" />
         </q-breadcrumbs>
 
         <h1>Banco de questões</h1>
         <p class="question-bank-subtitle">
-          Filtre, selecione e prepare seu simulado com questões reais do ENADE.
+          Pesquise questões ativas, escolha uma alternativa e confira o gabarito comentado.
         </p>
       </header>
 
-      <q-card flat bordered class="filter-card">
-        <q-card-section class="filter-card__section">
-          <h2>Encontre seu próximo desafio</h2>
+      <StudentQuestionFilters :loading="isLoading" @apply="applyFilters" @clear="clearFilters" />
 
-          <div class="filter-grid">
-            <div class="filter-field filter-field--search">
-              <label class="filter-label">Busca rápida</label>
-              <q-input
-                :model-value="''"
-                outlined
-                dense
-                placeholder="Buscar tema, palavra ou código"
-                aria-label="Buscar tema, palavra ou código"
-              />
-            </div>
-
-            <div class="filter-field">
-              <label class="filter-label">Ano da prova / referência</label>
-              <q-select
-                :model-value="2021"
-                :options="[...EXAM_YEAR_OPTIONS]"
-                outlined
-                dense
-                aria-label="Ano da prova ou referência"
-              />
-            </div>
-
-            <div class="filter-field">
-              <label class="filter-label">Curso / Área de conhecimento</label>
-              <q-select
-                :model-value="'Análise e Desenvolvimento de Sistemas'"
-                :options="[...courseOptions]"
-                outlined
-                dense
-                aria-label="Curso ou área de conhecimento"
-              />
-            </div>
-
-            <div class="filter-field">
-              <label class="filter-label">Componente</label>
-              <q-select
-                :model-value="'Conhecimento Específico'"
-                :options="componentOptions"
-                outlined
-                dense
-                aria-label="Componente"
-              />
-              <p class="filter-hint">Formação Geral ou Conhecimento Específico.</p>
-            </div>
-
-            <div class="filter-field">
-              <label class="filter-label">Tipo de questão</label>
-              <q-select
-                :model-value="'Múltipla escolha'"
-                :options="questionTypeOptions"
-                outlined
-                dense
-                aria-label="Tipo de questão"
-              />
-              <p class="filter-hint">Múltipla escolha, asserção-razão ou discursiva.</p>
-            </div>
-          </div>
-
-          <div class="filter-actions">
-            <q-btn
-              label="Aplicar filtros"
-              color="primary"
-              unelevated
-              no-caps
-              class="filter-action filter-action--primary"
-            />
-            <q-btn label="Limpar" outline color="primary" no-caps class="filter-action" />
-          </div>
-        </q-card-section>
-      </q-card>
+      <StudentQuestionList
+        :questions="questions"
+        :loading="isLoading"
+        :answers="answers"
+        :submitting-ids="submittingIds"
+        :has-error="hasLoadError"
+        @answer="submitAnswer"
+      />
     </main>
   </q-page>
 </template>
@@ -157,68 +189,6 @@ const questionTypeOptions = ['Múltipla escolha', 'Asserção-razão', 'Discursi
   line-height: 1.5;
 }
 
-.filter-card {
-  border-color: #dfe4ee;
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(20, 35, 80, 0.04);
-}
-
-.filter-card__section {
-  padding: 20px;
-}
-
-.filter-card h2 {
-  margin: 0 0 16px;
-  font-size: 18px;
-  font-weight: 720;
-  line-height: 1.3;
-}
-
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 18px;
-}
-
-.filter-field {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.filter-field--search {
-  grid-column: 1 / -1;
-}
-
-.filter-label {
-  color: #26344d;
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.filter-hint {
-  margin: -2px 0 0;
-  color: #667085;
-  font-size: 10px;
-  line-height: 1.4;
-}
-
-.filter-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.filter-action {
-  min-width: 124px;
-  min-height: 40px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
 @media (max-width: 599px) {
   .question-bank-page {
     min-height: calc(100vh - 58px);
@@ -244,48 +214,6 @@ const questionTypeOptions = ['Múltipla escolha', 'Asserção-razão', 'Discursi
   .question-bank-subtitle {
     margin-top: 6px;
     font-size: 11px;
-  }
-
-  .filter-card {
-    border-radius: 12px;
-  }
-
-  .filter-card__section {
-    padding: 12px 11px;
-  }
-
-  .filter-card h2 {
-    margin-bottom: 10px;
-    font-size: 14px;
-  }
-
-  .filter-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 9px;
-  }
-
-  .filter-field--search {
-    grid-column: auto;
-  }
-
-  .filter-label {
-    font-size: 10px;
-  }
-
-  .filter-hint {
-    font-size: 9px;
-  }
-
-  .filter-actions {
-    gap: 8px;
-    margin-top: 10px;
-  }
-
-  .filter-action {
-    min-width: 0;
-    min-height: 34px;
-    flex: 1;
-    font-size: 10px;
   }
 }
 </style>

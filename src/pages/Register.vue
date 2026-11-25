@@ -5,7 +5,7 @@ definePage({
 });
 
 defineOptions({
-    name: 'Register',
+  name: 'Register',
 });
 
 import { computed, reactive, ref, watch } from 'vue';
@@ -13,13 +13,15 @@ import { useRouter } from 'vue-router';
 import { Notify } from 'quasar';
 import HeaderLogin from '@/components/headers/HeaderLogin.vue';
 import { courseOptions } from '@/constants/course-options';
-import type { RegisterForm } from '@/composables/checkData';
+import { validateRegister } from '@/composables/checkData';
+import type { RegisterForm } from '@/types/auth';
 import { useAuthStore } from '@/stores/auth-store';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 const LOGIN_ROUTE = '/';
-const REGISTER_LOADING_DELAY_MS = 250;
 // Generic on purpose: must not reveal whether an e-mail is already registered.
-const REGISTER_ERROR_MESSAGE = 'Não foi possível concluir o cadastro. Verifique os dados e tente novamente.';
+const REGISTER_ERROR_MESSAGE =
+  'Não foi possível concluir o cadastro. Verifique os dados e tente novamente.';
 
 const profiles: { label: string; value: IProfileType }[] = [
   { label: 'Estudante', value: 'student' },
@@ -49,6 +51,13 @@ const isRegistering = ref(false);
 const isStudent = computed(() => formData.profileType === 'student');
 const passwordInputType = computed(() => (showPassword.value ? 'text' : 'password'));
 
+const requiredCourseRule = (value: string | null) =>
+  Boolean(value?.trim()) || 'Selecione seu curso.';
+const requiredInstitutionRule = (value: string | null) =>
+  Boolean(value?.trim()) || 'Informe sua instituição de ensino.';
+const maxInstitutionLengthRule = (value: string | null) =>
+  (value?.length ?? 0) <= 30 || 'A instituição deve ter no máximo 30 caracteres.';
+
 // Opções filtradas para o q-select de cursos
 const filteredCourseOptions = ref<readonly string[]>(courseOptions);
 
@@ -63,8 +72,8 @@ function filterFn(val: string, update: (callback: () => void) => void) {
 
   update(() => {
     const needle = val.toLowerCase();
-    filteredCourseOptions.value = courseOptions.filter(
-      (course) => course.toLowerCase().includes(needle),
+    filteredCourseOptions.value = courseOptions.filter((course) =>
+      course.toLowerCase().includes(needle),
     );
   });
 }
@@ -86,20 +95,17 @@ async function handleRegister() {
     return;
   }
 
+  if (!validateRegister(formData)) {
+    return;
+  }
+
   isRegistering.value = true;
 
   try {
-    // Simulated delay for visible local-development loading; remove when the API is connected.
-    await new Promise((resolve) => setTimeout(resolve, REGISTER_LOADING_DELAY_MS));
-
-    const result = authStore.register(formData);
+    const result = await authStore.register(formData);
 
     if (!result.success) {
-      if (result.reason === 'invalid-data') {
-        return;
-      }
-
-      Notify.create({ type: 'negative', message: REGISTER_ERROR_MESSAGE });
+      Notify.create({ type: 'negative', message: result.message });
       return;
     }
 
@@ -116,7 +122,10 @@ async function handleRegister() {
     await router.push(LOGIN_ROUTE);
   } catch (error) {
     console.error('Não foi possível concluir o cadastro.', error);
-    Notify.create({ type: 'negative', message: REGISTER_ERROR_MESSAGE });
+    Notify.create({
+      type: 'negative',
+      message: getApiErrorMessage(error, REGISTER_ERROR_MESSAGE),
+    });
   } finally {
     isRegistering.value = false;
   }
@@ -220,6 +229,7 @@ async function goToLogin() {
               v-model="formData.course"
               for="course"
               :options="filteredCourseOptions"
+              :rules="[requiredCourseRule]"
               use-input
               input-debounce="200"
               @filter="filterFn"
@@ -240,8 +250,11 @@ async function goToLogin() {
             <q-input
               v-model="formData.institution"
               for="institution"
+              type="text"
               autocomplete="organization"
               placeholder="Digite o nome da sua instituição"
+              maxlength="30"
+              :rules="[requiredInstitutionRule, maxInstitutionLengthRule]"
               outlined
               dense
               hide-bottom-space
@@ -298,8 +311,8 @@ async function goToLogin() {
         </div>
 
         <p class="register-page-privacy-note">
-          Seu desempenho individual é privado. Professores recebem somente indicadores agregados
-          da turma.
+          Seu desempenho individual é privado. Professores recebem somente indicadores agregados da
+          turma.
         </p>
 
         <div class="register-page-actions column no-wrap">

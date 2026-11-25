@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { useQuasar } from 'quasar';
+import { Notify, useQuasar } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth-store';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 defineProps<{
   modelValue: boolean;
@@ -14,8 +15,8 @@ const emit = defineEmits<{
 const navigationItems = [
   { label: 'Visão geral', icon: 'dashboard', path: '/teacher/panel' },
   { label: 'Gerenciar questões', icon: 'quiz', path: '/teacher/questions' },
+  { label: 'Gerenciar simulados', icon: 'fact_check', path: '/teacher/mock-exams' },
   { label: 'Adicionar questão', icon: 'add_circle_outline', path: '/teacher/questions/create' },
-  { label: 'Revisão e aprovação', icon: 'fact_check', path: '/teacher/review' },
   { label: 'Minha conta', icon: 'account_circle', path: '/teacher/account' },
 ];
 
@@ -35,14 +36,22 @@ async function navigateTo(path: string) {
 }
 
 async function logout() {
-  authStore.logout();
-  emit('update:modelValue', false);
-  await router.push('/');
+  try {
+    await authStore.logout();
+    emit('update:modelValue', false);
+    await router.push('/');
+  } catch (error) {
+    console.error('Não foi possível encerrar a sessão.', error);
+    Notify.create({
+      type: 'negative',
+      message: getApiErrorMessage(error, 'Não foi possível encerrar a sessão. Tente novamente.'),
+    });
+  }
 }
 </script>
 
 <template>
-  <q-drawe
+  <q-drawer
     :model-value="modelValue"
     bordered
     :width="236"
