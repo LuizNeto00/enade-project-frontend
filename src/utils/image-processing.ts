@@ -1,11 +1,15 @@
 import { Notify } from 'quasar';
 
 export const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
-export const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;
+export const ALLOWED_IMAGE_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+] as const;
 
 export type ImageValidationResult =
-  | { valid: true; mimeType: string }
-  | { valid: false; message: string };
+  { valid: true; mimeType: string } | { valid: false; message: string };
 
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

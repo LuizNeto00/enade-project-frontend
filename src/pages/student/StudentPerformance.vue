@@ -1,4 +1,3 @@
-
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { Notify } from 'quasar';
@@ -75,10 +74,7 @@ async function loadAll(): Promise<void> {
     summary.value = summaryResult;
     attemptsPage.value = attemptsResult;
   } catch (error) {
-    loadError.value = getApiErrorMessage(
-      error,
-      'Não foi possível carregar seu desempenho.',
-    );
+    loadError.value = getApiErrorMessage(error, 'Não foi possível carregar seu desempenho.');
   } finally {
     isLoading.value = false;
   }
@@ -120,19 +116,13 @@ async function openDetails(attempt: StudentPerformanceAttempt): Promise<void> {
   if (!authStore.token) return;
 
   try {
-    selectedAttempt.value = await getStudentPerformanceAttempt(
-      authStore.token,
-      attempt.id,
-    );
+    selectedAttempt.value = await getStudentPerformanceAttempt(authStore.token, attempt.id);
 
     detailsOpen.value = true;
   } catch (error) {
     Notify.create({
       type: 'negative',
-      message: getApiErrorMessage(
-        error,
-        'Não foi possível carregar os detalhes da tentativa.',
-      ),
+      message: getApiErrorMessage(error, 'Não foi possível carregar os detalhes da tentativa.'),
     });
   }
 }
@@ -157,39 +147,24 @@ onMounted(() => {
         <h1>Meu desempenho</h1>
 
         <p class="performance-subtitle">
-          Acompanhe sua evolução, visualize suas estatísticas e identifique
-          seus pontos fortes e oportunidades de melhoria.
+          Acompanhe sua evolução, visualize suas estatísticas e identifique seus pontos fortes e
+          oportunidades de melhoria.
         </p>
       </header>
 
       <!-- Filtros de desempenho -->
-      <PerformanceFilters
-        :loading="isLoading"
-        @apply="applyFilters"
-        @clear="clearFilters"
-      />
+      <PerformanceFilters :loading="isLoading" @apply="applyFilters" @clear="clearFilters" />
 
       <!-- Carregamento -->
       <div v-if="isLoading" class="performance-loading">
-        <q-skeleton
-          v-for="item in 4"
-          :key="item"
-          height="110px"
-          square
-        />
+        <q-skeleton v-for="item in 4" :key="item" height="110px" square />
       </div>
 
       <!-- Erro -->
       <div v-else-if="loadError" class="performance-error">
         {{ loadError }}
 
-        <q-btn
-          outline
-          color="primary"
-          no-caps
-          label="Tentar novamente"
-          @click="loadAll"
-        />
+        <q-btn outline color="primary" no-caps label="Tentar novamente" @click="loadAll" />
       </div>
 
       <!-- Dados de desempenho -->
@@ -202,9 +177,7 @@ onMounted(() => {
 
           <h2>Você ainda não resolveu nenhuma questão.</h2>
 
-          <p>
-            Comece agora e acompanhe sua evolução por aqui.
-          </p>
+          <p>Comece agora e acompanhe sua evolução por aqui.</p>
 
           <q-btn
             color="primary"
@@ -224,9 +197,7 @@ onMounted(() => {
               :correct-percentage="summary.correctPercentage"
             />
 
-            <PerformanceEvolutionChart
-              :evolution="summary.evolution"
-            />
+            <PerformanceEvolutionChart :evolution="summary.evolution" />
           </div>
         </template>
       </template>
@@ -242,10 +213,7 @@ onMounted(() => {
       />
 
       <!-- Detalhes da tentativa -->
-      <PerformanceAttemptDetails
-        v-model="detailsOpen"
-        :attempt="selectedAttempt"
-      />
+      <PerformanceAttemptDetails v-model="detailsOpen" :attempt="selectedAttempt" />
     </main>
   </q-page>
 </template>
